@@ -378,6 +378,33 @@ echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":
 Email: olibuijr@olibuijr.com
 GitHub: [@olibuijr](https://github.com/olibuijr)
 
+## Changelog
+
+### v1.1.0 (2025-12-03)
+
+**New Features:**
+- **Web UI**: Added SvelteKit web interface for real-time voice conversation
+- **Voice Assistant**: Integrated Gemini Live API for native audio responses
+- **Icelandic Speech Recognition**: Added Whisper STT service with fine-tuned Icelandic model (`language-and-voice-lab/whisper-large-icelandic-62640-steps-967h`)
+- **Function Calling**: Gemini can now fetch news using MCP tools (`get_all_news`, `get_news_by_source`, `get_news_by_category`)
+- **Voice Activity Detection (VAD)**: Auto-transcription when user stops speaking
+- **Auto-Headlines**: App automatically reads 10 latest headlines on startup
+- **Multiple Voices**: Choose from 5 different voices (Puck, Charon, Kore, Fenrir, Aoede)
+
+**Technical:**
+- News API endpoint for RSS feed aggregation
+- Whisper service runs on CUDA (RTX 3080) for fast inference
+- SvelteKit proxy for Whisper service requests
+- Professional Icelandic news reporter persona
+
+### v1.0.0 (2025-12-03)
+
+**Initial Release:**
+- MCP server with 2 tools: `get_news` and `list_feeds`
+- Support for 6 Icelandic news sources
+- 60+ RSS feeds across categories
+- Multi-language support (Icelandic, English, Polish)
+
 ## License
 
 ISC
