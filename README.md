@@ -380,6 +380,26 @@ GitHub: [@olibuijr](https://github.com/olibuijr)
 
 ## Changelog
 
+### v1.2.0 (2025-12-03)
+
+**Breaking Changes:**
+- Removed ElevenLabs Conversational AI integration
+- Replaced with Google Gemini Live API for lower latency
+
+**New Features:**
+- **Gemini Live API**: Direct WebSocket streaming for minimal latency voice responses
+- **Hybrid STT**: Whisper for accurate Icelandic transcription, Gemini for fast response
+- **VAD Auto-Stop**: Automatically ends recording after 1.5s of silence
+- **Audio Level Visualization**: Real-time input level display while recording
+- **Search News**: New `search_news` tool for keyword search across all sources
+- **More Sources**: Added Vísir, DV, Stundin, Fréttablaðið, Kjarninn, Iceland Review, Grapevine, Veðurstofa (14 total)
+
+**Technical:**
+- AudioWorklet for efficient real-time audio processing
+- Parallel Whisper transcription for accurate text display
+- Removed @elevenlabs/client and @elevenlabs/react dependencies
+- Simplified UI without ElevenLabs settings panel
+
 ### v1.1.0 (2025-12-03)
 
 **New Features:**

@@ -1,87 +1,11 @@
 <script lang="ts">
-	import { GeminiLiveClient, AVAILABLE_VOICES, type VoiceId } from '$lib/gemini-live.svelte';
-	import { onMount } from 'svelte';
+	import { GeminiLiveClient } from '$lib/gemini-live-client.svelte';
 
-	let { data } = $props();
-
-	let apiKey = $state(data.apiKey || '');
 	let client = $state<GeminiLiveClient | null>(null);
 	let textInput = $state('');
-	let showApiKeyInput = $state(!data.apiKey);
-	let selectedVoice = $state<VoiceId>('Kore');
-
-	// Check for API key in localStorage and auto-connect
-	onMount(async () => {
-		if (!apiKey) {
-			const savedKey = localStorage.getItem('gemini_api_key');
-			if (savedKey) {
-				apiKey = savedKey;
-				showApiKeyInput = false;
-			}
-		}
-
-		// Auto-connect and start with headlines if we have an API key
-		if (apiKey && !showApiKeyInput) {
-			await autoStartWithHeadlines();
-		}
-	});
-
-	async function autoStartWithHeadlines() {
-		try {
-			await connect();
-			// Wait for connection to establish
-			await new Promise(resolve => setTimeout(resolve, 1000));
-
-			// Send initial request for headlines
-			if (client?.isConnected) {
-				client.sendText('Góðan daginn! Lestu upp 10 nýjustu fréttirnar frá öllum miðlum.');
-			}
-		} catch (err) {
-			console.error('Auto-start failed:', err);
-		}
-	}
-
-	function saveApiKey() {
-		if (apiKey.trim()) {
-			localStorage.setItem('gemini_api_key', apiKey);
-			showApiKeyInput = false;
-		}
-	}
-
-	function clearApiKey() {
-		localStorage.removeItem('gemini_api_key');
-		apiKey = '';
-		showApiKeyInput = true;
-		if (client) {
-			client.disconnect();
-			client = null;
-		}
-	}
 
 	async function connect() {
-		if (!apiKey) return;
-
-		client = new GeminiLiveClient({
-			apiKey,
-			voice: selectedVoice,
-			systemInstruction: `Þú ert fréttamaður á íslensku. Þú lest upp fréttir eins og faglegur fréttamaður á sjónvarpi eða útvarpi.
-
-MIKILVÆGAR REGLUR:
-1. Talaðu ALLTAF á íslensku nema notandinn tali ensku við þig.
-2. Ekki spyrja spurninga - lestu bara upp fréttirnar faglega.
-3. Ekki bulla eða búa til fréttir. Notaðu ALLTAF tólin til að sækja raunverulegar fréttir.
-4. Notaðu get_all_news tólið til að sækja fréttir. Settu limit á 10 til að fá 10 fréttir.
-5. Þegar notandinn biður um fréttir eftir flokkum (íþróttir, innlent, erlent, viðskipti, menning):
-   - Notaðu get_news_by_category tólið
-6. Þegar notandinn biður um fréttir frá ákveðnum miðli (RÚV, Morgunblaðið, Vísir):
-   - Notaðu get_news_by_source tólið
-7. Lestu fréttirnar upp á faglegan hátt, byrjaðu á heimildinni.
-8. Haltu hverri frétt stuttri - bara fyrirsögn og eina setningu lýsingu.
-
-HEIMILDIR: ruv, mbl, visir, heimildin
-FLOKKAR: ithrottir, innlent, erlent, vidskipti, menning`
-		});
-
+		client = new GeminiLiveClient();
 		await client.connect();
 	}
 
@@ -92,13 +16,12 @@ FLOKKAR: ithrottir, innlent, erlent, vidskipti, menning`
 		}
 	}
 
-	async function toggleListening() {
+	function toggleListening() {
 		if (!client) return;
-
-		if (client.isListening) {
+		if (client.isRecording) {
 			client.stopListening();
 		} else {
-			await client.startListening();
+			client.startListening();
 		}
 	}
 
@@ -123,129 +46,118 @@ FLOKKAR: ithrottir, innlent, erlent, vidskipti, menning`
 <main>
 	<header>
 		<h1>Iceland News Voice Assistant</h1>
-		<p>Real-time voice conversation powered by Gemini Live API</p>
+		<p>Real-time voice conversation powered by Google Gemini + Whisper STT</p>
 		<p class="mcp-info">
-			Using <a href="https://github.com/olibuijr/iceland-news-mcp" target="_blank">Iceland News MCP Server</a> for news data
+			Using <a href="https://github.com/olibuijr/iceland-news-mcp" target="_blank"
+				>Iceland News MCP Server</a
+			> for news data
 		</p>
 	</header>
 
-	{#if showApiKeyInput}
-		<section class="api-key-section">
-			<h2>Enter your Google API Key</h2>
-			<p>Your API key is stored locally and never sent to our servers.</p>
-			<div class="api-key-input">
-				<input
-					type="password"
-					bind:value={apiKey}
-					placeholder="Enter your Gemini API key"
-				/>
-				<button onclick={saveApiKey} disabled={!apiKey.trim()}>
-					Save Key
-				</button>
-			</div>
-			<p class="hint">
-				Get your API key from <a href="https://aistudio.google.com/apikey" target="_blank">Google AI Studio</a>
-			</p>
-		</section>
-	{:else}
-		<section class="controls">
-			{#if !client?.isConnected}
-				<div class="voice-selector">
-					<label for="voice-select">Voice:</label>
-					<select id="voice-select" bind:value={selectedVoice}>
-						{#each AVAILABLE_VOICES as voice (voice.id)}
-							<option value={voice.id}>{voice.name} - {voice.description}</option>
-						{/each}
-					</select>
-				</div>
-				<button class="connect-btn" onclick={connect}>
+	<section class="controls">
+		{#if !client?.isConnected}
+			<button class="connect-btn" onclick={connect} disabled={client?.status === 'connecting'}>
+				{#if client?.status === 'connecting'}
+					Connecting...
+				{:else}
 					Connect to Assistant
-				</button>
-			{:else}
-				<button class="disconnect-btn" onclick={disconnect}>
-					Disconnect
-				</button>
-			{/if}
-
-			<button class="settings-btn" onclick={clearApiKey}>
-				Change API Key
+				{/if}
 			</button>
-		</section>
+		{:else}
+			<button class="disconnect-btn" onclick={disconnect}>Disconnect</button>
+		{/if}
+	</section>
 
-		{#if client?.isConnected}
-			<section class="conversation">
-				<div class="messages">
-					{#each client.messages as message, i (i)}
-						<div class="message {message.role} {message.isTranscription ? 'transcription' : ''}">
-							<span class="role">
-								{message.role === 'user' ? 'You' : 'Assistant'}
-								{#if message.isTranscription}
-									<span class="transcription-badge">transcribed</span>
-								{/if}
-							</span>
-							<p>{message.content}</p>
-							<time>{message.timestamp.toLocaleTimeString()}</time>
-						</div>
-					{/each}
+	{#if client?.isConnected}
+		<section class="conversation">
+			<div class="messages">
+				{#each client.messages as message, i (i)}
+					<div class="message {message.role}">
+						<span class="role">
+							{message.role === 'user' ? 'You' : 'Assistant'}
+						</span>
+						<p>{message.content}</p>
+						<time>{message.timestamp.toLocaleTimeString()}</time>
+					</div>
+				{/each}
 
-					{#if client.isSpeaking}
-						<div class="message model speaking">
-							<span class="role">Assistant</span>
-							<p class="speaking-indicator">
-								<span></span><span></span><span></span>
-							</p>
-						</div>
+				{#if client.isSpeaking}
+					<div class="message assistant speaking">
+						<span class="role">Assistant</span>
+						<p class="speaking-indicator">
+							<span></span><span></span><span></span>
+						</p>
+					</div>
+				{/if}
+			</div>
+
+			<div class="input-area">
+				<div class="voice-controls">
+					<button
+						class="voice-orb {client.status}"
+						onclick={toggleListening}
+						disabled={client.isSpeaking}
+					>
+						{#if client.isRecording}
+							<svg viewBox="0 0 24 24" fill="currentColor">
+								<path
+									d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"
+								/>
+								<path
+									d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"
+								/>
+							</svg>
+						{:else if client.isSpeaking}
+							<svg viewBox="0 0 24 24" fill="currentColor">
+								<path
+									d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"
+								/>
+							</svg>
+						{:else}
+							<svg viewBox="0 0 24 24" fill="currentColor">
+								<path
+									d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"
+								/>
+								<path
+									d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"
+								/>
+							</svg>
+						{/if}
+					</button>
+
+					{#if client.isRecording}
+						<span class="status listening">Listening... (auto-stops on silence)</span>
+					{:else if client.isSpeaking}
+						<span class="status speaking">Speaking...</span>
+					{:else}
+						<span class="status">Click mic or type below</span>
 					{/if}
 				</div>
 
-				<div class="input-area">
-					<div class="voice-controls">
-						<button
-							class="mic-btn {client.isListening ? 'listening' : ''}"
-							onclick={toggleListening}
-							title={client.isListening ? 'Stop listening' : 'Start listening'}
-						>
-							{#if client.isListening}
-								<svg viewBox="0 0 24 24" fill="currentColor">
-									<rect x="6" y="6" width="12" height="12" rx="2"/>
-								</svg>
-							{:else}
-								<svg viewBox="0 0 24 24" fill="currentColor">
-									<path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
-									<path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
-								</svg>
-							{/if}
-						</button>
-
-						{#if client.isListening}
-							<span class="status listening">Listening...</span>
-						{:else if client.isSpeaking}
-							<span class="status speaking">Speaking...</span>
-						{:else}
-							<span class="status">Click mic or type below</span>
-						{/if}
+				{#if client.isRecording}
+					<div class="input-level">
+						<div class="level-bar" style="width: {Math.min(100, client.inputLevel * 500)}%"></div>
 					</div>
+				{/if}
 
-					<div class="text-input">
-						<input
-							type="text"
-							bind:value={textInput}
-							onkeydown={handleKeydown}
-							placeholder="Type a message..."
-						/>
-						<button onclick={sendMessage} disabled={!textInput.trim()}>
-							Send
-						</button>
-					</div>
+				<div class="text-input">
+					<input
+						type="text"
+						bind:value={textInput}
+						onkeydown={handleKeydown}
+						placeholder="Type a message..."
+						disabled={client.isSpeaking}
+					/>
+					<button onclick={sendMessage} disabled={!textInput.trim() || client.isSpeaking}>Send</button>
 				</div>
-			</section>
-		{/if}
-
-		{#if client?.error}
-			<div class="error">
-				{client.error}
 			</div>
-		{/if}
+		</section>
+	{/if}
+
+	{#if client?.error}
+		<div class="error">
+			{client.error}
+		</div>
 	{/if}
 </main>
 
@@ -297,43 +209,6 @@ FLOKKAR: ithrottir, innlent, erlent, vidskipti, menning`
 		text-decoration: underline;
 	}
 
-	.api-key-section {
-		background: rgba(255, 255, 255, 0.05);
-		border-radius: 1rem;
-		padding: 2rem;
-		text-align: center;
-	}
-
-	.api-key-section h2 {
-		margin-top: 0;
-	}
-
-	.api-key-input {
-		display: flex;
-		gap: 0.5rem;
-		max-width: 500px;
-		margin: 1rem auto;
-	}
-
-	.api-key-input input {
-		flex: 1;
-		padding: 0.75rem 1rem;
-		border: 1px solid rgba(255, 255, 255, 0.2);
-		border-radius: 0.5rem;
-		background: rgba(0, 0, 0, 0.3);
-		color: #fff;
-		font-size: 1rem;
-	}
-
-	.hint {
-		color: #666;
-		font-size: 0.9rem;
-	}
-
-	.hint a {
-		color: #00d4ff;
-	}
-
 	.controls {
 		display: flex;
 		flex-wrap: wrap;
@@ -341,32 +216,6 @@ FLOKKAR: ithrottir, innlent, erlent, vidskipti, menning`
 		justify-content: center;
 		align-items: center;
 		margin-bottom: 2rem;
-	}
-
-	.voice-selector {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.voice-selector label {
-		color: #888;
-		font-size: 0.9rem;
-	}
-
-	.voice-selector select {
-		padding: 0.5rem 1rem;
-		border: 1px solid rgba(255, 255, 255, 0.2);
-		border-radius: 0.5rem;
-		background: rgba(0, 0, 0, 0.3);
-		color: #fff;
-		font-size: 0.9rem;
-		cursor: pointer;
-	}
-
-	.voice-selector select:focus {
-		outline: none;
-		border-color: #00d4ff;
 	}
 
 	button {
@@ -398,11 +247,6 @@ FLOKKAR: ithrottir, innlent, erlent, vidskipti, menning`
 		color: #fff;
 	}
 
-	.settings-btn {
-		background: rgba(255, 255, 255, 0.1);
-		color: #fff;
-	}
-
 	.conversation {
 		background: rgba(255, 255, 255, 0.05);
 		border-radius: 1rem;
@@ -427,7 +271,7 @@ FLOKKAR: ithrottir, innlent, erlent, vidskipti, menning`
 		margin-left: auto;
 	}
 
-	.message.model {
+	.message.assistant {
 		background: rgba(0, 255, 136, 0.2);
 	}
 
@@ -438,19 +282,6 @@ FLOKKAR: ithrottir, innlent, erlent, vidskipti, menning`
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
-	}
-
-	.transcription-badge {
-		font-size: 0.65rem;
-		font-weight: 400;
-		background: rgba(255, 255, 255, 0.1);
-		padding: 0.15rem 0.4rem;
-		border-radius: 0.25rem;
-		color: #aaa;
-	}
-
-	.message.transcription {
-		opacity: 0.85;
 	}
 
 	.message p {
@@ -476,12 +307,22 @@ FLOKKAR: ithrottir, innlent, erlent, vidskipti, menning`
 		animation: bounce 1.4s infinite ease-in-out;
 	}
 
-	.speaking-indicator span:nth-child(1) { animation-delay: -0.32s; }
-	.speaking-indicator span:nth-child(2) { animation-delay: -0.16s; }
+	.speaking-indicator span:nth-child(1) {
+		animation-delay: -0.32s;
+	}
+	.speaking-indicator span:nth-child(2) {
+		animation-delay: -0.16s;
+	}
 
 	@keyframes bounce {
-		0%, 80%, 100% { transform: scale(0); }
-		40% { transform: scale(1); }
+		0%,
+		80%,
+		100% {
+			transform: scale(0);
+		}
+		40% {
+			transform: scale(1);
+		}
 	}
 
 	.input-area {
@@ -497,31 +338,60 @@ FLOKKAR: ithrottir, innlent, erlent, vidskipti, menning`
 		margin-bottom: 1rem;
 	}
 
-	.mic-btn {
-		width: 60px;
-		height: 60px;
+	.voice-orb {
+		width: 80px;
+		height: 80px;
 		border-radius: 50%;
 		background: rgba(255, 255, 255, 0.1);
 		display: flex;
 		align-items: center;
 		justify-content: center;
+		transition: all 0.3s;
 		padding: 0;
 	}
 
-	.mic-btn svg {
-		width: 28px;
-		height: 28px;
+	.voice-orb svg {
+		width: 32px;
+		height: 32px;
 	}
 
-	.mic-btn.listening {
-		background: #ff4444;
-		animation: pulse 1.5s infinite;
+	.voice-orb:hover:not(:disabled) {
+		background: rgba(255, 255, 255, 0.2);
+		transform: scale(1.05);
 	}
 
-	@keyframes pulse {
-		0% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7); }
-		70% { box-shadow: 0 0 0 20px rgba(255, 68, 68, 0); }
-		100% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0); }
+	.voice-orb.listening {
+		background: linear-gradient(135deg, #00d4ff, #0088ff);
+		animation: pulse-blue 1.5s infinite;
+	}
+
+	.voice-orb.speaking {
+		background: linear-gradient(135deg, #00ff88, #00cc66);
+		animation: pulse-green 1.5s infinite;
+	}
+
+	@keyframes pulse-blue {
+		0% {
+			box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.7);
+		}
+		70% {
+			box-shadow: 0 0 0 20px rgba(0, 212, 255, 0);
+		}
+		100% {
+			box-shadow: 0 0 0 0 rgba(0, 212, 255, 0);
+		}
+	}
+
+	@keyframes pulse-green {
+		0% {
+			box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.7);
+		}
+		70% {
+			box-shadow: 0 0 0 20px rgba(0, 255, 136, 0);
+		}
+		100% {
+			box-shadow: 0 0 0 0 rgba(0, 255, 136, 0);
+		}
 	}
 
 	.status {
@@ -530,11 +400,25 @@ FLOKKAR: ithrottir, innlent, erlent, vidskipti, menning`
 	}
 
 	.status.listening {
-		color: #ff4444;
+		color: #00d4ff;
 	}
 
 	.status.speaking {
 		color: #00ff88;
+	}
+
+	.input-level {
+		height: 4px;
+		background: rgba(255, 255, 255, 0.1);
+		border-radius: 2px;
+		margin-bottom: 1rem;
+		overflow: hidden;
+	}
+
+	.level-bar {
+		height: 100%;
+		background: linear-gradient(90deg, #00d4ff, #00ff88);
+		transition: width 0.05s;
 	}
 
 	.text-input {
@@ -554,6 +438,10 @@ FLOKKAR: ithrottir, innlent, erlent, vidskipti, menning`
 
 	.text-input input::placeholder {
 		color: #666;
+	}
+
+	.text-input input:disabled {
+		opacity: 0.5;
 	}
 
 	.text-input button {

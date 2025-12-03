@@ -7,12 +7,10 @@ export default defineConfig({
 	envDir: '..',
 	server: {
 		host: '0.0.0.0',
-		allowedHosts: ['titan', 'localhost', 'icelandic-news-mcp.olibuijr.com'],
-		https: true
+		allowedHosts: ['titan', 'localhost', 'icelandic-news-mcp.olibuijr.com']
 	},
 	preview: {
 		host: '0.0.0.0',
-		allowedHosts: ['titan', 'localhost', 'icelandic-news-mcp.olibuijr.com'],
-		https: true
+		allowedHosts: ['titan', 'localhost', 'icelandic-news-mcp.olibuijr.com']
 	}
 });
