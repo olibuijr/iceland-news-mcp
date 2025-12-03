@@ -1,0 +1,22 @@
+[Unit]
+Description=Icelandic Whisper Speech-to-Text Service
+After=network.target
+
+[Service]
+Type=simple
+User=olibuijr
+WorkingDirectory=/home/olibuijr/Applications/WhisperICE
+Environment="PATH=/home/olibuijr/Applications/WhisperICE/venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/home/olibuijr/Applications/WhisperICE/venv/bin/python main.py
+Restart=always
+RestartSec=10
+
+# GPU access
+Environment="CUDA_VISIBLE_DEVICES=0"
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
