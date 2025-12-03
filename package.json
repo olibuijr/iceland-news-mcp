@@ -1,0 +1,31 @@
+{
+  "name": "iceland-news-mcp",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "iceland-news-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "keywords": [
+    "mcp",
+    "iceland",
+    "news",
+    "rss"
+  ],
+  "author": "",
+  "license": "ISC",
+  "description": "MCP server for fetching Icelandic news from RSS sources",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.24.2",
+    "rss-parser": "^3.13.0",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "^5.9.3"
+  }
+}
